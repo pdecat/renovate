@@ -37,12 +37,10 @@ describe('config/presets/github/index', () => {
   });
 
   describe('getPreset()', () => {
-    it('tries default then renovate', async () => {
+    it('tries default', async () => {
       httpMock
         .scope(githubApiHost)
         .get(`${basePath}/default.json`)
-        .reply(404, {})
-        .get(`${basePath}/renovate.json`)
         .reply(200, {});
 
       await expect(github.getPreset({ repo: 'some/repo' })).rejects.toThrow();

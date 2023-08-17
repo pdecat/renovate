@@ -56,12 +56,10 @@ describe('config/presets/gitea/index', () => {
   });
 
   describe('getPreset()', () => {
-    it('tries default then renovate', async () => {
+    it('tries default', async () => {
       httpMock
         .scope(giteaApiHost)
         .get(`${basePath}/default.json`)
-        .reply(404, {})
-        .get(`${basePath}/renovate.json`)
         .reply(200, {});
 
       await expect(gitea.getPreset({ repo: 'some/repo' })).rejects.toThrow();
