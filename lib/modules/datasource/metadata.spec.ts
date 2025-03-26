@@ -1,4 +1,5 @@
 import type { Timestamp } from '../../util/timestamp';
+import { GitTagsDatasource } from './git-tags';
 import { HelmDatasource } from './helm';
 import { MavenDatasource } from './maven';
 import {
@@ -119,6 +120,25 @@ describe('modules/datasource/metadata', () => {
       const dep: ReleaseResult = { sourceUrl, releases: [] };
       const datasource = HelmDatasource.id;
       const packageName = 'some-chart';
+
+      addMetaData(dep, datasource, packageName);
+      expect(dep).toMatchObject({
+        sourceUrl: expectedSourceUrl,
+      });
+    },
+  );
+
+  it.each`
+    sourceUrl                                       | expectedSourceUrl
+    ${'git@gitlab.com:group/sub-group/repo/'}       | ${'https://gitlab.com/group/sub-group/repo'}
+    ${'git@somehost.com:group/sub-group/repo/'}     | ${'https://somehost.com/group/sub-group/repo'}
+    ${'ssh://git@gitlab.com/group/sub-group/repo/'} | ${'https://gitlab.com/group/sub-group/repo'}
+  `(
+    'Should fallback to massagedUrl for sourceUrl for non Github non HTTP(S) hosts: $sourceUrl -> $expectedSourceUrl',
+    ({ sourceUrl, expectedSourceUrl, expectedSourceDirectory }) => {
+      const dep: ReleaseResult = { sourceUrl, releases: [] };
+      const datasource = GitTagsDatasource.id;
+      const packageName = 'some-dep';
 
       addMetaData(dep, datasource, packageName);
       expect(dep).toMatchObject({
