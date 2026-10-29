@@ -2,6 +2,7 @@ import type { RenovateConfig } from '~test/util.ts';
 import { git, partial, platform, scm } from '~test/util.ts';
 import { GlobalConfig } from '../../../config/global.ts';
 import type { Pr } from '../../../modules/platform/types.ts';
+import { PackageFiles } from '../package-files.ts';
 import * as cleanup from './prune.ts';
 
 let config: RenovateConfig;
@@ -13,6 +14,7 @@ beforeEach(() => {
     branchPrefix: `renovate/`,
     pruneStaleBranches: true,
   });
+  PackageFiles.clear();
 });
 
 describe('workers/repository/finalize/prune', () => {
@@ -76,6 +78,49 @@ describe('workers/repository/finalize/prune', () => {
       expect(git.getBranchList).toHaveBeenCalledTimes(1);
       expect(scm.deleteBranch).toHaveBeenCalledTimes(1);
       expect(platform.updatePr).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips pruning when a dependency lookup failed', async () => {
+      PackageFiles.add('main', {
+        npm: [
+          {
+            packageFile: 'package.json',
+            deps: [
+              { depName: 'a' },
+              {
+                depName: 'c',
+                warnings: [
+                  {
+                    topic: 'c',
+                    message: 'Failed to look up npm package c: no-result',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      PackageFiles.add('next', null);
+      config.branchList = ['renovate/a', 'renovate/b'];
+      git.getBranchList.mockReturnValueOnce(
+        config.branchList.concat(['renovate/c']),
+      );
+      await cleanup.pruneStaleBranches(config, config.branchList);
+      expect(platform.findPr).not.toHaveBeenCalled();
+      expect(platform.updatePr).not.toHaveBeenCalled();
+      expect(scm.deleteBranch).not.toHaveBeenCalled();
+    });
+
+    it('prunes when dependency lookups left no warning', async () => {
+      PackageFiles.add('main', {
+        npm: [{ packageFile: 'package.json', deps: [{ depName: 'a' }] }],
+      });
+      config.branchList = ['renovate/a'];
+      git.getBranchList.mockReturnValueOnce(
+        config.branchList.concat(['renovate/c']),
+      );
+      await cleanup.pruneStaleBranches(config, config.branchList);
+      expect(scm.deleteBranch).toHaveBeenCalledExactlyOnceWith('renovate/c');
     });
 
     it('skips rename but still deletes branch', async () => {

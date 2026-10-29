@@ -4634,6 +4634,10 @@ If a branch appears stale and hasn't been modified, then:
 - If an Open PR exist for the branch, then Renovate will rename the PR to append " - autoclosed" before closing/abandoning it
 - Renovate will delete the branch
 
+Renovate skips pruning for any run in which a dependency lookup failed.
+A failed lookup yields no update, so the branch of that update looks stale even when the update still exists, for example during a registry outage, when rate limited, or with an expired token.
+The failed lookups are listed on the Dependency Dashboard, and pruning resumes with the next run where all lookups succeed.
+
 You can configure `pruneStaleBranches=false` to disable deleting orphan branches and autoclosing PRs, but then you will be responsible for such branch/PR "cleanup" so it is not recommended.
 
 ## `rangeStrategy`

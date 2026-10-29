@@ -9,6 +9,7 @@ import { scm } from '../../../modules/platform/scm.ts';
 import { getBranchList, setUserRepoConfig } from '../../../util/git/index.ts';
 import { regEx } from '../../../util/regex.ts';
 import { uniqueStrings } from '../../../util/string.ts';
+import { PackageFiles } from '../package-files.ts';
 import { isMultiBaseBranch } from '../process/index.ts';
 import { getReconfigureBranchName } from '../reconfigure/utils.ts';
 
@@ -18,6 +19,17 @@ async function cleanUpBranches(
 ): Promise<void> {
   if (!config.pruneStaleBranches) {
     logger.debug('Branch/PR pruning is disabled - skipping');
+    return;
+  }
+  // A failed lookup yields no update, so its branch looks stale even though the
+  // update may still exist (registry outage, rate limiting, revoked token, ...).
+  // Pruning now would autoclose PRs that the next healthy run recreates.
+  const depWarningCount = PackageFiles.getDepWarningCount();
+  if (depWarningCount) {
+    logger.info(
+      { depWarningCount, remainingBranches },
+      'Dependency lookups failed - skipping branch/PR pruning',
+    );
     return;
   }
   // set Git author in case the repository is not initialized yet

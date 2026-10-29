@@ -1,8 +1,10 @@
 import { isEmptyArray, isEmptyObject, isTruthy } from '@sindresorhus/is';
 import { logger } from '../../logger/index.ts';
 import type { PackageFile } from '../../modules/manager/types.ts';
+import { coerceArray } from '../../util/array.ts';
 import { clone } from '../../util/clone.ts';
 import { emojify } from '../../util/emoji.ts';
+import { coerceObject } from '../../util/object.ts';
 
 export class PackageFiles {
   private static data = new Map<string, Record<string, PackageFile[]> | null>();
@@ -21,6 +23,26 @@ export class PackageFiles {
   static clear(): void {
     logger.debug('PackageFiles.clear() - Package files deleted');
     this.data.clear();
+  }
+
+  /**
+   * Counts the dependencies whose lookup left a warning, across all base branches.
+   * These are the dependencies listed as lookup failures on the Dependency Dashboard.
+   */
+  static getDepWarningCount(): number {
+    let count = 0;
+    for (const managers of this.data.values()) {
+      for (const files of Object.values(coerceObject(managers))) {
+        for (const file of coerceArray(files)) {
+          for (const dep of coerceArray(file.deps)) {
+            if (dep.warnings?.length) {
+              count += 1;
+            }
+          }
+        }
+      }
+    }
+    return count;
   }
 
   /**
